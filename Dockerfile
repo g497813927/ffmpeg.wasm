@@ -21,18 +21,20 @@ RUN apt-get update && \
       apt-get install -y pkg-config autoconf automake libtool ragel
 
 # Build x264
-FROM emsdk-base AS x264-builder
-ENV X264_BRANCH=4-cores
-ADD https://github.com/ffmpegwasm/x264.git#$X264_BRANCH /src
-COPY build/x264.sh /src/build.sh
-RUN bash -x /src/build.sh
+# FROM emsdk-base AS x264-builder
+# ENV X264_BRANCH=4-cores
+# ADD https://github.com/ffmpegwasm/x264.git#$X264_BRANCH /src
+# COPY build/x264.sh /src/build.sh
+# RUN bash -x /src/build.sh
+
+
 
 # Build x265
-FROM emsdk-base AS x265-builder
-ENV X265_BRANCH=3.4
-ADD https://github.com/ffmpegwasm/x265.git#$X265_BRANCH /src
-COPY build/x265.sh /src/build.sh
-RUN bash -x /src/build.sh
+# FROM emsdk-base AS x265-builder
+# ENV X265_BRANCH=3.4
+# ADD https://github.com/ffmpegwasm/x265.git#$X265_BRANCH /src
+# COPY build/x265.sh /src/build.sh
+# RUN bash -x /src/build.sh
 
 # Build libvpx
 FROM emsdk-base AS libvpx-builder
@@ -61,13 +63,6 @@ COPY --from=ogg-builder $INSTALL_DIR $INSTALL_DIR
 ENV THEORA_BRANCH=v1.1.1
 ADD https://github.com/ffmpegwasm/theora.git#$THEORA_BRANCH /src
 COPY build/theora.sh /src/build.sh
-RUN bash -x /src/build.sh
-
-# Build opus
-FROM emsdk-base AS opus-builder
-ENV OPUS_BRANCH=v1.3.1
-ADD https://github.com/ffmpegwasm/opus.git#$OPUS_BRANCH /src
-COPY build/opus.sh /src/build.sh
 RUN bash -x /src/build.sh
 
 # Build vorbis
@@ -132,15 +127,24 @@ RUN git clone --recursive -b $ZIMG_BRANCH https://github.com/sekrit-twc/zimg.git
 COPY build/zimg.sh /src/build.sh
 RUN bash -x /src/build.sh
 
+# Build openh264
+FROM emsdk-base AS openh264-builder
+ENV OPENH264_VERSION=v2.6.0
+RUN apt-get update && apt-get install -y build-essential pkg-config
+ADD https://github.com/cisco/openh264.git#$OPENH264_VERSION /src
+COPY build/openh264.sh /src/build.sh
+RUN bash -x /src/build.sh
+
 # Base ffmpeg image with dependencies and source code populated.
 FROM emsdk-base AS ffmpeg-base
 RUN embuilder build sdl2 sdl2-mt
 ADD https://github.com/FFmpeg/FFmpeg.git#$FFMPEG_VERSION /src
-COPY --from=x264-builder $INSTALL_DIR $INSTALL_DIR
-COPY --from=x265-builder $INSTALL_DIR $INSTALL_DIR
+# COPY --from=x264-builder $INSTALL_DIR $INSTALL_DIR
+# COPY --from=x265-builder $INSTALL_DIR $INSTALL_DIR
+COPY --from=openh264-builder $INSTALL_DIR $INSTALL_DIR
+COPY --from=freetype2-builder $INSTALL_DIR $INSTALL_DIR
 COPY --from=libvpx-builder $INSTALL_DIR $INSTALL_DIR
 COPY --from=lame-builder $INSTALL_DIR $INSTALL_DIR
-COPY --from=opus-builder $INSTALL_DIR $INSTALL_DIR
 COPY --from=theora-builder $INSTALL_DIR $INSTALL_DIR
 COPY --from=vorbis-builder $INSTALL_DIR $INSTALL_DIR
 COPY --from=libwebp-builder $INSTALL_DIR $INSTALL_DIR
@@ -151,20 +155,19 @@ COPY --from=zimg-builder $INSTALL_DIR $INSTALL_DIR
 FROM ffmpeg-base AS ffmpeg-builder
 COPY build/ffmpeg.sh /src/build.sh
 RUN bash -x /src/build.sh \
-      --enable-gpl \
-      --enable-libx264 \
-      --enable-libx265 \
+      --disable-gpl \
+      --disable-nonfree \
       --enable-libvpx \
       --enable-libmp3lame \
       --enable-libtheora \
       --enable-libvorbis \
-      --enable-libopus \
       --enable-zlib \
       --enable-libwebp \
       --enable-libfreetype \
       --enable-libfribidi \
       --enable-libass \
-      --enable-libzimg 
+      --enable-libzimg \
+      --enable-libopenh264
 
 # Build ffmpeg.wasm
 FROM ffmpeg-builder AS ffmpeg-wasm-builder
@@ -173,16 +176,14 @@ COPY src/fftools /src/src/fftools
 COPY build/ffmpeg-wasm.sh build.sh
 # libraries to link
 ENV FFMPEG_LIBS \
-      -lx264 \
-      -lx265 \
       -lvpx \
+      -lopenh264 \
       -lmp3lame \
       -logg \
       -ltheora \
       -lvorbis \
       -lvorbisenc \
       -lvorbisfile \
-      -lopus \
       -lz \
       -lwebpmux \
       -lwebp \

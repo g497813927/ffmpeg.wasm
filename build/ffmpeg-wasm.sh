@@ -17,7 +17,6 @@ CONF_FLAGS=(
   -Llibavfilter 
   -Llibavformat 
   -Llibavutil 
-  -Llibpostproc 
   -Llibswresample 
   -Llibswscale 
   -lavcodec 
@@ -25,7 +24,6 @@ CONF_FLAGS=(
   -lavfilter 
   -lavformat 
   -lavutil 
-  -lpostproc 
   -lswresample 
   -lswscale 
   -Wno-deprecated-declarations 
@@ -36,8 +34,8 @@ CONF_FLAGS=(
   -sSTACK_SIZE=5MB                         # increase stack size to support libopus
   -sMODULARIZE                             # modularized to use as a library
   ${FFMPEG_MT:+ -sINITIAL_MEMORY=1024MB}   # ALLOW_MEMORY_GROWTH is not recommended when using threads, thus we use a large initial memory
-  ${FFMPEG_MT:+ -sPTHREAD_POOL_SIZE=32}    # use 32 threads
-  ${FFMPEG_ST:+ -sINITIAL_MEMORY=32MB -sALLOW_MEMORY_GROWTH} # Use just enough memory as memory usage can grow
+  ${FFMPEG_MT:+ -sPTHREAD_POOL_SIZE=16}    # use 16 threads to reduce overhead thread creation
+  ${FFMPEG_ST:+ -sINITIAL_MEMORY=32MB -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3GB} # Use just enough memory as memory usage can grow
   -sEXPORT_NAME="$EXPORT_NAME"             # required in browser env, so that user can access this module from window object
   -sEXPORTED_FUNCTIONS=$(node src/bind/ffmpeg/export.js) # exported functions
   -sEXPORTED_RUNTIME_METHODS=$(node src/bind/ffmpeg/export-runtime.js) # exported built-in functions
